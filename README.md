@@ -1,9 +1,6 @@
 # protocolo-2V2PL
 Implementação do protocolo de controle de concorrência 2V2PL para disciplina de SGBD 2024.1
 
-# protocolo-2V2PL
-Implementação do protocolo de controle de concorrência 2V2PL para disciplina de SGBD 2024.1
-
 # Como configurar o ambiente do projeto
 
 Este projeto utiliza dependências gerenciadas pelo Python e armazenadas no arquivo `requirements.txt`. Para garantir que todas as dependências corretas estejam instaladas no seu ambiente, siga as instruções abaixo:
