@@ -2,9 +2,24 @@ from collections import defaultdict
 
 class Locks:
 
-    def _type_lock(self,operacao):
-        """Recebe a operação. 
-        Retorna o tipo da operação"""
+    def _type_lock(self,operacao: str) -> str:
+        # Docstring gerada pelo chat gpt
+        """
+        Determina o tipo de bloqueio com base na operação fornecida.
+
+        Args:
+            operacao (str): Uma string representando a operação. 
+                            Deve ser 'r' para leitura ou 'w' para escrita.
+
+        Returns:
+            str: O tipo de bloqueio associado à operação:
+                - 'compartilhado' para operações de leitura ('r')
+                - 'exclusivo' para operações de escrita ('w')
+
+        Raises:
+            ValueError: Se a operação fornecida não for 'r' ou 'w'.
+        """
+
         if operacao == 'r':
             return 'compartilhado'
         elif operacao == 'w':
@@ -13,8 +28,39 @@ class Locks:
             raise ValueError(f"Operação inválida.")
     
 
-    def add_locks(self, schedule):
-        "Recebe o schedule parsed. Retornar os dicionários locks e waits"
+    def add_locks(self, schedule: dict) -> dict:
+        # Docstring gerada pelo chat gpt
+        """
+        Adiciona bloqueios e determina a ordem de espera entre transações.
+
+        Este método recebe um dicionário de operações de transações (schedule) e 
+        retorna dois dicionários: 
+        - `locks`: que mapeia os objetos bloqueados e suas transações associadas.
+        - `waits`: que registra quais transações estão esperando por outros bloqueios.
+
+        Args:
+            schedule (dict): Um dicionário contendo as transações e suas operações. 
+                            O formato esperado é:
+                            {transacao: [(operacao, objeto)]}, onde:
+                            - `transacao` (str) é o identificador da transação (ex: 'T1').
+                            - `operacao` (str) é 'r' (leitura) ou 'w' (escrita).
+                            - `objeto` (str) é o recurso sendo acessado (ex: 'x', 'y').
+
+        Returns:
+            tuple[dict, dict]: 
+                - `locks`: Um dicionário onde cada objeto é a chave e o valor é um 
+                outro dicionário que mapeia os tipos de bloqueio ('compartilhado' ou 
+                'exclusivo') para as transações associadas.
+                Exemplo: {'x': {'compartilhado': ['T1'], 'exclusivo': []}}
+                
+                - `waits`: Um dicionário que mapeia cada transação para uma lista de tuplas, 
+                onde cada tupla contém a transação bloqueante e o objeto que causou o bloqueio.
+                Exemplo: {'T2': [('T1', 'x')]}
+
+        Raises:
+            ValueError: Se a operação fornecida não for válida ('r' ou 'w') no método `_type_lock`.
+        """    
+
         locks = defaultdict(lambda: defaultdict(list))
 
 
@@ -46,6 +92,10 @@ class Locks:
                     
                     if (len(locks[objeto]['exclusivo']) == 0 and len(locks[objeto]['compartilhado']) == 0):
                         locks[objeto][tipo_operacao].append(transacao)
+
+                    elif (len(locks[objeto]['compartilhado']) == 1) and (transacao in locks[objeto]['compartilhado']): # Aplicando update lock
+                        locks[objeto]['exclusivo'] = locks[objeto]['compartilhado']
+                        locks[objeto]['compartilhado'] = []
 
                     else:
                         transacao_lock = locks[objeto]['exclusivo'] + locks[objeto]['compartilhado']
