@@ -40,7 +40,7 @@ class Locks:
 
                     else:
                         transacao_lock = locks[objeto]['exclusivo']
-                        waits[transacao].append(transacao_lock[0]) # [0] serve para tirar a camada superior da lista. [[1]] depois fica [1
+                        waits[transacao].append((transacao_lock[0], objeto)) # [0] serve para tirar a camada superior da lista. [[1]] depois fica [1
 
                 elif tipo_operacao == 'exclusivo':
                     
@@ -49,7 +49,7 @@ class Locks:
 
                     else:
                         transacao_lock = locks[objeto]['exclusivo'] + locks[objeto]['compartilhado']
-                        waits[transacao].append(transacao_lock[0]) # [0] serve para tirar a camada superior da lista. [[1]] depois fica [1]
+                        waits[transacao].append((transacao_lock[0], objeto)) # [0] serve para tirar a camada superior da lista. [[1]] depois fica [1]
                     # waits receber uma tupla com a transacao do block e o objeto
                 
             
