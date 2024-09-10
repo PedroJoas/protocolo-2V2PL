@@ -35,7 +35,7 @@ pip install -r requirements.txt
 
 Pronto, após esses passos é só começar a codar ;)
 
-## Enunciado
+# Enunciado
 
 O trabalho prático representará a implementação do protocolo conservador 2V2PL, para controle de concorrência, com suporte à múltipla granulosidade de bloqueio, detecção e prevenção (bloqueio do tipo update) de deadlocks. Na implementação do protocolo, a entrada deverá ser um escalonamento (conjunto de transações e suas operações) qualquer. A saída deve mostrar a sincronização correta das operações do escalonamento fornecido. A detecção de deadlocks deverá utilizar a estratégia do grafo de espera.
 
@@ -69,21 +69,78 @@ A múltipla granularidade de bloqueio é uma técnica que permite que bloqueios 
 
 Essa abordagem permite um controle mais flexível e eficiente dos bloqueios, onde transações podem bloquear apenas o nível necessário de granularidade, em vez de bloquear dados em um nível mais amplo.
 
-Utilizar grafo de granularidade(?)
-
 
 ## Detecção e prevenção de deadlocks
 
-A detecção de deadlocks deverá utilizar a estratégia do grafo de espera.Enquanto a prevenção utilizando bloqueio do tipo update.
+A detecção de deadlocks deverá utilizar a estratégia do grafo de espera. Enquanto a prevenção utilizando bloqueio do tipo update.
 
-## Ideias iniciais
+# Funcionamento
 
-Fazer um parser que gera uma lista de tuplas, onde cada tupla contém a operação, qual transação e objeto.
+O arquivo main.py recebe como entrada um schedule no formato de string, onde as operações das transações são separadas por vírgulas. Cada operação segue o formato r1(x) ou w2(y), onde:
 
-classes operacoes, transacoes, ...
+- r indica uma operação de leitura (read).
+- w indica uma operação de escrita (write).
+- O número após a operação (1, 2, etc.) identifica a transação associada.
+- O valor entre parênteses (x, y, etc.) é o objeto sobre o qual a operação está sendo realizada.
 
-Implementação da tabela syslockinfo.
+## Exemplo de Entrada:
 
-Mostra o grafo usando plotly
+```dash
+r1(x),w2(y),r1(y),w2(x)
+```
 
-utilziar um dicionario para armazenar cada acao da transacao, bloqueios, (?)
+Neste exemplo:
+
+- A transação T1 lê o objeto x e depois lê o objeto y.
+- A transação T2 escreve no objeto y e depois escreve no objeto x
+
+## Funcionalidades do Script:
+1. Parse do Schedule: A entrada é analisada e convertida em um formato dicionário, onde cada transação tem suas operações listadas.
+
+- Exemplo de dicionário gerado:
+
+```python  
+{
+    'T1': [('r', 'x'), ('r', 'y')],
+    'T2': [('w', 'y'), ('w', 'x')]
+}
+```
+
+2. Geração dos Dicionários de Bloqueios e Espera:
+
+- O script processa o schedule e gera dois dicionários:
+
+   - Locks: Mapeia quais transações têm bloqueios sobre quais objetos e o tipo de bloqueio (compartilhado ou exclusivo).
+   - Waits: Mapeia quais transações estão esperando por outras transações devido a bloqueios.
+
+Exemplo:
+
+```python
+locks = {
+    'x': {'compartilhado': ['T1'], 'exclusivo': []},
+    'y': {'compartilhado': [], 'exclusivo': ['T2']}
+}
+waits = {
+    'T2': [('T1', 'x')],
+    'T1': [('T2', 'y')]
+}
+```
+
+3. Criação do Grafo de Espera:
+- Com base no dicionário waits, um grafo de espera é construído, onde:
+
+   - Cada nó representa uma transação.
+   - Cada aresta representa uma dependência, ou seja, uma transação que está esperando por outra.
+
+- Este grafo é usado para detectar **deadlocks**. Caso um 
+ciclo seja identificado no grafo, isso indica a presença de um deadlock entre as transações.
+
+4. Detecção de Deadlocks:
+- O script utiliza o grafo de espera para verificar a presença de ciclos. Se um ciclo for encontrado, ele é impresso, indicando quais transações estão em deadlock.
+
+Fluxo do Script:
+- O usuário fornece o schedule.
+- O script realiza o parsing da entrada.
+- Os dicionários de bloqueios e espera são gerados.
+- O grafo de espera é construído.
+- Deadlocks são detectados e exibidos.
