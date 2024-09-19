@@ -2,11 +2,13 @@ import networkx as nx
 
 class Graph:
 
-    def __init__(self, graph) -> None:
-        self.graph = graph
+    def __init__(self, schedule_parsed, waits) -> None:
+        self.graph = nx.DiGraph()
+        self._add_nodes(schedule_parsed)
+        self.add_edges(waits)
     
 
-    def add_nodes(self, schedule_parsed: dict):
+    def _add_nodes(self, schedule_parsed: dict):
         """
         Adiciona vértices ao grafo com base nas transações do schedule.
 
