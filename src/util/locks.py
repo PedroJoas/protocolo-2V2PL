@@ -1,6 +1,6 @@
 from collections import defaultdict
 from typing import Any
-
+import re
 class Locks:
 
     def __init__(self) -> None:
@@ -28,53 +28,108 @@ class Locks:
         if operacao == 'r':
             return 'compartilhado'
         elif operacao == 'w':
-            return 'exclusivo'
+            return 'exclusivo'            
         else:
             raise ValueError(f"Operação inválida.")
     
 
-    def add_locks_test(self, schedule_parsed: list):
+    def add_locks(self, schedule_parsed: list) -> None:
         locks = defaultdict(lambda: defaultdict(list))
 
         waits =  defaultdict(list)
         
         for command in schedule_parsed:
-            transacao = command[0]
-            tipo_operacao = self._type_lock(command[1])
-            objeto = command[2]
+            
+            if command[1] == 'c':
+                self._process_commit(command)
+                continue
+            else:
+                transacao = command[0]
+                tipo_operacao = self._type_lock(command[1])
+                objeto = command[2]
 
-            if objeto not in locks.keys():
+                if objeto not in locks.keys():
 
-                locks[objeto][tipo_operacao].append(transacao)
-
-            elif tipo_operacao == 'compartilhado':
-
-                if len(locks[objeto]['exclusivo']) == 0:
                     locks[objeto][tipo_operacao].append(transacao)
+                    self._add_new_schedule(command) # Adiciona no novo schedule
+                
+                elif tipo_operacao == 'compartilhado':
+
+                    if len(locks[objeto]['exclusivo']) == 0:
+                        locks[objeto][tipo_operacao].append(transacao)
+
+                    else:
+                        transacao_lock = locks[objeto]['exclusivo']
+                        waits[transacao].append((transacao_lock[0], tipo_operacao,objeto)) # [0] serve para tirar a camada superior da lista. [[1]] depois fica [1]
+
+                elif tipo_operacao == 'exclusivo':
+
+                    if (len(locks[objeto]['exclusivo']) == 0 and len(locks[objeto]['compartilhado']) == 0):
+                        locks[objeto][tipo_operacao].append(transacao)
+                        self._add_new_schedule(command)
+
+                    elif (len(locks[objeto]['compartilhado']) == 1) and (transacao in locks[objeto]['compartilhado']): # Aplicando update lock
+                        locks[objeto]['exclusivo'] = locks[objeto]['compartilhado']
+                        locks[objeto]['compartilhado'] = []
+                        self._add_new_schedule(command)
 
                 else:
-                    transacao_lock = locks[objeto]['exclusivo']
-                    waits[transacao].append((transacao_lock[0], objeto)) # [0] serve para tirar a camada superior da lista. [[1]] depois fica [1]
-
-            elif tipo_operacao == 'exclusivo':
-
-                if (len(locks[objeto]['exclusivo']) == 0 and len(locks[objeto]['compartilhado']) == 0):
-                    locks[objeto][tipo_operacao].append(transacao)
-
-                elif (len(locks[objeto]['compartilhado']) == 1) and (transacao in locks[objeto]['compartilhado']): # Aplicando update lock
-                    locks[objeto]['exclusivo'] = locks[objeto]['compartilhado']
-                    locks[objeto]['compartilhado'] = []
-
-            else:
-                transacao_lock = locks[objeto]['exclusivo'] + locks[objeto]['compartilhado']
-                waits[transacao].append((transacao_lock[0], objeto)) # [0] serve para tirar a camada superior da lista. [[1]] depois fica [1]
-                # waits receber uma tupla com a transacao do block e o objeto
+                    transacao_lock = locks[objeto]['exclusivo'] + locks[objeto]['compartilhado']
+                    waits[transacao].append((transacao_lock[0], tipo_operacao, objeto)) # [0] serve para tirar a camada superior da lista. [[1]] depois fica [1]
+                    # waits receber uma tupla com a transacao do block e o objeto
 
 
-        self.locks = {k: dict(v) for k, v in self.locks.items()}
-        self.waits = dict(self.waits)
+            self.locks = {k: dict(v) for k, v in locks.items()}
+            self.waits = dict(waits)
+
+    def _add_new_schedule(self,command: tuple) -> None:
+
+        transacao = re.sub('[^0-9]','',command[0])
+        tipo_operacao = command[1]
+        objeto = command[2]
+
+        refactor_command = f'{tipo_operacao}{transacao}({objeto})'
+
+        self.new_schedule.append(refactor_command)
+        
+
+    def _process_commit(self, command):
+        transacao = command[0]
 
         
+        # Libera todos os locks associados a essa transação
+        for obj, tipos_locks in self.locks.items():
+            # Remove a transação dos locks compartilhados e exclusivos
+            if 'compartilhado' not in tipos_locks:
+                tipos_locks['compartilhado'] = []
+            if 'exclusivo' not in tipos_locks:
+                tipos_locks['exclusivo'] = []
+            
+            
+            if transacao in tipos_locks['compartilhado']:
+                tipos_locks['compartilhado'].remove(transacao)
+            if transacao in tipos_locks['exclusivo']:
+                tipos_locks['exclusivo'].remove(transacao)
+
+            # Verifica se há transações esperando por esse objeto
+            for trans_esperando, objeto_esperado in self.waits.items():
+                # Se a transação está esperando pelo objeto que foi liberado, tenta conceder o lock
+                if obj == objeto_esperado[0][1]:  # Verifica se o objeto esperado é o mesmo que foi liberado
+                    # Verifica se o lock pode ser concedido
+                    if len(tipos_locks['exclusivo']) == 0 and (len(tipos_locks['compartilhado']) == 0 or objeto_esperado[0][0] == 'compartilhado'):
+                        # Concede o lock à transação esperando
+                        tipo_operacao = self._type_lock(command[1])
+                        self.locks[obj][tipo_operacao].append(trans_esperando)
+
+                        # Remove da lista de espera
+                        self.waits.pop(trans_esperando)
+
+                        # Adiciona ao novo schedule
+                        self._add_new_schedule((trans_esperando, 'lock concedido', obj))
+
+        # Adiciona o commit ao novo schedule
+        self._add_new_schedule(command)
+
 
 
     def _release_locks(self, transacao: str, schedule_original: dict) -> None:
@@ -173,9 +228,5 @@ class Locks:
         print("Transações esperando:", self.waits)
         print('--'*20)
     
-
-    def __getattribute__(self, name_attr: str) -> Any:
-        return super().__getattribute__(name_attr)  # Evita loop infinito
-
 
 

@@ -13,9 +13,6 @@ locks = Locks()
 
 locks.add_locks(schedule_parsed)
 
-graph = Graph(schedule_parsed, locks.__getattribute__('waits'))
-graph.detect_deadlocks()
-
-locks.liberar_todos_bloqueios(schedule_parsed)
+print(locks.new_schedule)
 
 
