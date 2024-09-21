@@ -7,23 +7,22 @@ class Parser:
     def __init__(self, schedule) -> None:
         self.schedule = schedule
 
-    def parser_schedule(self):
-        schedule_parsed = self.schedule.strip().split(',')
+    def parser_schedule(schedule):
+        pattern = r'([a-zA-Z])(\d+)([a-zA-Z])'
 
-        processes = defaultdict(list)
+        schedule_list = [command.replace('(', '') for command in schedule.split(')')]
+        schedule_list.pop()
+        schedule_parsed = []
 
-        for process in schedule_parsed:
-        # Regex para capturar a letra, o número e o objeto
-            pattern = r'([a-zA-Z])(\d+)\(([^)]+)\)'
-
-            # Encontrar correspondências
-            match = re.match(pattern, process)
+        for command in schedule_list:
+            match = re.match(pattern, command)
 
             if match:
-                operation = match.group(1)
-                number = match.group(2)
-                object = match.group(3)
-                processes[f'T{number}'].append((operation, object))
-            else:
-                print('Não corresponde ao padrão')
-        return processes
+                op = match.group(1)
+                transacao = match.group(2)
+                objeto = match.group(3)
+
+                schedule_parsed.append((f'T{transacao}', op, objeto))
+
+
+            return schedule_parsed

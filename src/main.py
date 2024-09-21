@@ -17,3 +17,5 @@ graph = Graph(schedule_parsed, locks.__getattribute__('waits'))
 graph.detect_deadlocks()
 
 locks.liberar_todos_bloqueios(schedule_parsed)
+
+
