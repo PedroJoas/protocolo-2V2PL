@@ -1,6 +1,5 @@
 from util.transactionParser import Parser
 from util.locks import Locks
-from util.graph import Graph
 
 
 schedule = input('Digite o schedule: ')
@@ -13,7 +12,7 @@ locks = Locks()
 
 locks.add_locks(schedule_parsed)
 
-print(locks.new_schedule)
-print(locks.__getattribute__('locks'))
+print(locks.retorna_new_schedule())
+
 print(locks.__getattribute__('waits'))
 

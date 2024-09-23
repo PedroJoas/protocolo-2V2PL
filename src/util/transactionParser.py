@@ -8,6 +8,19 @@ class Parser:
         self.schedule = schedule
 
     def parser_schedule(self) -> list:
+        """
+        Analisa uma string de cronograma e a transforma em uma lista de comandos estruturados.
+
+        Esta função processa um cronograma de transações em formato de string, extrai informações 
+        sobre operações e as organiza em uma lista de tuplas. Cada tupla representa um comando 
+        com a transação, o tipo de operação e o objeto relacionado.
+
+        Retorna:
+        --------
+        list
+            Uma lista de tuplas, onde cada tupla contém a transação (como 'T1'), o tipo de 
+            operação (como 'r' ou 'w'), e o objeto relacionado (ou None, se for um commit).
+        """
         pattern = r'([a-zA-Z])(\d+)([a-zA-Z])| ([a-zA-Z])(\d+)'
         self.schedule = re.sub(r'(c\d+)', r'\1)', self.schedule)
 

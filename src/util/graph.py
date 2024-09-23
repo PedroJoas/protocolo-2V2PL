@@ -2,10 +2,9 @@ import networkx as nx
 
 class Graph:
 
-    def __init__(self, schedule_parsed, waits) -> None:
+    def __init__(self, schedule_parsed) -> None:
         self.graph = nx.DiGraph()
         self._add_nodes(schedule_parsed)
-        self.add_edges(waits)
     
 
     def _add_nodes(self, schedule_parsed: dict):
@@ -30,8 +29,8 @@ class Graph:
 
         """
 
-        for processo in schedule_parsed:
-            self.graph.add_node(f'T{processo[1]}')
+        for operacao in schedule_parsed:
+            self.graph.add_node(f'T{operacao[0]}')
 
        
     def detect_deadlocks(self):
@@ -83,8 +82,7 @@ class Graph:
             A função irá adicionar as arestas ('T2', 'T1') e ('T3', 'T1') ao grafo.
         """
 
-        for wait in waits.items():
-            edge = [(wait[0], t[0]) for t in wait[1]]
-        
-            self.graph.add_edges_from(edge)
+        for transacao_bloqueada, dependencias in waits.items():
+            for transacao_bloqueante, _ in dependencias:
+                self.graph.add_edge(f'T{transacao_bloqueada}', f'T{transacao_bloqueante}')
         
