@@ -9,6 +9,7 @@ class Locks:
     def __init__(self) -> None:
         self.new_schedule = []
         self.graph = nx.DiGraph()
+
     
     def _type_lock(self,operacao: str) -> str:
         # Docstring gerada pelo chat gpt
@@ -51,7 +52,7 @@ class Locks:
             return False  # Indica que um deadlock foi detectado
 
         # Garantir que a chave existe antes de adicionar
-        if transacao_bloqueada not in self.waits:
+        if transacao_bloqueada not in self.waits.keys():
             self.waits[transacao_bloqueada] = []
 
         # Se não há ciclo, adiciona à espera
@@ -114,10 +115,7 @@ class Locks:
                         self._add_new_schedule(command)
                     else:
                         transacao_lock = locks[objeto]['exclusivo']
-                        if not self._add_to_waits(transacao, (transacao_lock[0], 'exclusivo', objeto)):
-                            print(f"Deadlock detectado ao adicionar {transacao} à espera.")
-            
-                        
+                        waits[transacao].append((transacao_lock[0], tipo_operacao, objeto))
 
                 elif tipo_operacao == 'exclusivo':
 
@@ -132,8 +130,7 @@ class Locks:
 
                 else:
                     transacao_lock = locks[objeto]['exclusivo'] + locks[objeto]['compartilhado']
-                    if not self._add_to_waits(transacao, (transacao_lock[0], tipo_operacao, objeto)):
-                        print(f"Deadlock detectado ao adicionar {transacao} à espera.")
+                    waits[transacao].append((transacao_lock[0], tipo_operacao, objeto))
 
 
 
