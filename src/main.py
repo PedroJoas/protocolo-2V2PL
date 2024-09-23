@@ -14,5 +14,6 @@ locks = Locks()
 locks.add_locks(schedule_parsed)
 
 print(locks.new_schedule)
-
+print(locks.__getattribute__('locks'))
+print(locks.__getattribute__('waits'))
 

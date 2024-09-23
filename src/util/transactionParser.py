@@ -4,12 +4,12 @@ from collections import defaultdict
 
 class Parser:
 
-    def __init__(self, schedule) -> None:
+    def __init__(self, schedule:str) -> None:
         self.schedule = schedule
 
-    def parser_schedule(self):
+    def parser_schedule(self) -> list:
         pattern = r'([a-zA-Z])(\d+)([a-zA-Z])| ([a-zA-Z])(\d+)'
-        schedule = re.sub(r'(c\d+)', r'\1)', self.schedule)
+        self.schedule = re.sub(r'(c\d+)', r'\1)', self.schedule)
 
         schedule_list = [command.replace('(', '') for command in self.schedule.split(')') if command] # if command serve para apenas pegar os objetos não vazios
         schedule_parsed = []
@@ -22,7 +22,7 @@ class Parser:
                 transacao = command[1]
                 objeto = None
 
-            if match:
+            elif match:
                 op = match.group(1)
                 transacao = match.group(2)
                 objeto = match.group(3)
