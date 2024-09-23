@@ -1,6 +1,15 @@
 # protocolo-2V2PL
 Implementação do protocolo de controle de concorrência 2V2PL para disciplina de SGBD 2024.1
 
+# Integrantes
+
+| Nome | Matricula |
+| - | - |
+| Pedro Joás Freitas Lima | 548292 |
+| José Alberto Rodrigues Neto | 547872 |
+| Gabriel Victor Magalhães da Silva | 539922 |
+
+
 # Como configurar o ambiente do projeto
 
 Este projeto utiliza dependências gerenciadas pelo Python e armazenadas no arquivo `requirements.txt`. Para garantir que todas as dependências corretas estejam instaladas no seu ambiente, siga as instruções abaixo:
