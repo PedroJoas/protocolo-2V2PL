@@ -3,6 +3,7 @@ from typing import Any
 import re
 
 import networkx as nx
+from util.graph import Graph
 
 class Locks:
 
@@ -61,9 +62,13 @@ class Locks:
 
     def _detect_deadlock(self):
         """Verifica se há ciclos no grafo de espera."""
+        graph = Graph
         try:
             nx.find_cycle(self.graph, orientation='original')
             print("Ciclo encontrado!")
+            fig = graph.draw_graph(self.graph)
+            fig.show()  # Exibe o gráfico quando o deadlock for detectado
+
             return True
         except nx.NetworkXNoCycle:
             return False
@@ -71,71 +76,49 @@ class Locks:
     def add_locks(self, schedule_parsed: list) -> None:
         """
         Adiciona locks às transações com base em um cronograma de operações.
-
-        Esta função processa uma lista de comandos representando transações e suas operações 
-        (como commits ou pedidos de locks) e atualiza a estrutura de locks e a fila de espera 
-        conforme as regras de bloqueio para locks compartilhados e exclusivos.
-
-        Parâmetros:
-        -----------
-        schedule_parsed : list
-            Uma lista de comandos onde cada comando é uma tupla contendo:
-            - transação (str): Identificador da transação (ex: 'T1').
-            - operação (str): Tipo de operação ('c' para commit, 'r' para lock compartilhado, 
-            'w' para lock exclusivo).
-            - objeto (str ou None): O objeto sobre o qual a operação é realizada.
-
-        Retorna:
-        --------
-        None
         """
-
-        locks = defaultdict(lambda: defaultdict(list))
-
-        waits =  defaultdict(list)
         
+        locks = defaultdict(lambda: defaultdict(list))
+        waits = defaultdict(list)
+
         for command in schedule_parsed:
             if command[1] == 'c':
                 self._process_commit(command)
-
             else:
                 transacao = command[0]
                 tipo_operacao = self._type_lock(command[1])
                 objeto = command[2]
 
                 if objeto not in locks.keys():
-
                     locks[objeto][tipo_operacao].append(transacao)
-                    self._add_new_schedule(command) # Adiciona no novo schedule
+                    self._add_new_schedule(command)  # Adiciona no novo schedule
 
                 elif tipo_operacao == 'compartilhado':
-
                     if len(locks[objeto]['exclusivo']) == 0:
                         locks[objeto][tipo_operacao].append(transacao)
                         self._add_new_schedule(command)
                     else:
+                        # Verifica se pode adicionar à fila de espera
                         transacao_lock = locks[objeto]['exclusivo']
-                        waits[transacao].append((transacao_lock[0], tipo_operacao, objeto))
+                        if not self._add_to_waits(transacao, (transacao_lock[0], tipo_operacao, objeto)):
+                            print(f"Deadlock detectado ao tentar adicionar {transacao} à espera.")
 
-                elif tipo_operacao == 'exclusivo':
-
-                    if (len(locks[objeto]['exclusivo']) == 0 and len(locks[objeto]['compartilhado']) == 0):
-                        locks[objeto][tipo_operacao].append(transacao)
-                        self._add_new_schedule(command)
-
-                    elif (len(locks[objeto]['compartilhado']) == 1) and (transacao in locks[objeto]['compartilhado']): # Aplicando update lock
-                        locks[objeto]['exclusivo'] = locks[objeto]['compartilhado']
-                        locks[objeto]['compartilhado'] = []
-                        self._add_new_schedule(command)
-
+                elif (len(locks[objeto]['compartilhado']) == 1) and (transacao in locks[objeto]['compartilhado']):
+                    locks[objeto]['exclusivo'] = locks[objeto]['compartilhado']  # Mover lock para exclusivo
+                    locks[objeto]['compartilhado'] = []  # Limpar compartilhado
+                    self._add_new_schedule(command)
                 else:
                     transacao_lock = locks[objeto]['exclusivo'] + locks[objeto]['compartilhado']
-                    waits[transacao].append((transacao_lock[0], tipo_operacao, objeto))
-
-
+                    if transacao_lock:  # Verifica se não está vazio
+                        if not self._add_to_waits(transacao, (transacao_lock[0], tipo_operacao, objeto)):
+                            print(f"Deadlock detectado ao tentar adicionar {transacao} à espera.")
+                    else:
+                        # Trate o caso onde não há transação bloqueante
+                        pass
 
             self.locks = {k: dict(v) for k, v in locks.items()}
             self.waits = dict(waits)
+
 
     def _add_new_schedule(self,command: tuple) -> None:
         """

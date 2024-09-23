@@ -1,10 +1,10 @@
 import networkx as nx
+import plotly.graph_objects as go
 
 class Graph:
 
-    def __init__(self, schedule_parsed) -> None:
-        self.graph = nx.DiGraph()
-        self._add_nodes(schedule_parsed)
+    def __init__(self, graph) -> None:
+        self.graph = graph
     
 
     def _add_nodes(self, schedule_parsed: dict):
@@ -86,3 +86,68 @@ class Graph:
             for transacao_bloqueante, _ in dependencias:
                 self.graph.add_edge(f'T{transacao_bloqueada}', f'T{transacao_bloqueante}')
         
+
+    # Função para desenhar o grafo com setas
+    def draw_graph(G):
+        pos = nx.spring_layout(G)  # Layout dos nós
+
+        # Cria uma lista de trace para as arestas (com setas)
+        edge_trace = []
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+
+            # Trace para a linha com uma seta (arrowstyle)
+            edge_trace.append(
+                go.Scatter(
+                    x=[x0, x1, None],
+                    y=[y0, y1, None],
+                    mode='lines',
+                    line=dict(width=2, color='cornflowerblue'),
+                    hoverinfo='none',
+                    marker=dict(size=5, color='red')  # Apenas para visualização clara
+                )
+            )
+
+        # Cria trace para os nós
+        node_trace = go.Scatter(
+            x=[pos[node][0] for node in G.nodes()],
+            y=[pos[node][1] for node in G.nodes()],
+            text=[f'Processo {node}' for node in G.nodes()],
+            mode='markers+text',
+            textposition='top center',
+            hoverinfo='text',
+            marker=dict(
+                showscale=False,
+                color='lightblue',
+                size=30,
+                line_width=2
+            )
+        )
+
+        # Configuração de layout com setas nas arestas
+        fig = go.Figure(data=edge_trace + [node_trace],
+                        layout=go.Layout(
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=0, l=0, r=0, t=0),
+                            xaxis=dict(showgrid=False, zeroline=False),
+                            yaxis=dict(showgrid=False, zeroline=False),
+                            annotations=[
+                                dict(
+                                    ax=pos[edge[0]][0],
+                                    ay=pos[edge[0]][1],
+                                    x=pos[edge[1]][0],
+                                    y=pos[edge[1]][1],
+                                    xref='x', yref='y', axref='x', ayref='y',
+                                    showarrow=True,
+                                    arrowhead=3,  # Define o tipo da seta
+                                    arrowsize=1.5,
+                                    arrowwidth=2,
+                                    arrowcolor='cornflowerblue'
+                                ) for edge in G.edges()
+                            ]
+                        ))
+
+        return fig
+

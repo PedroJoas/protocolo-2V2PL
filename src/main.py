@@ -16,3 +16,4 @@ print(locks.retorna_new_schedule())
 
 print(locks.__getattribute__('waits'))
 
+print(locks.__getattribute__('locks'))
