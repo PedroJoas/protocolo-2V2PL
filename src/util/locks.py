@@ -1,125 +1,49 @@
 from collections import defaultdict
-from typing import Any
 import re
 
-import networkx as nx
-from util.graph import Graph
-
 class Locks:
-
     def __init__(self) -> None:
-        self.new_schedule = []
-        self.graph = nx.DiGraph()
-
-    
-    def _type_lock(self,operacao: str) -> str:
-        # Docstring gerada pelo chat gpt
-        """
-        Determina o tipo de bloqueio com base na operação fornecida.
-
-        Args:
-            operacao (str): Uma string representando a operação. 
-                            Deve ser 'r' para leitura ou 'w' para escrita.
-
-        Returns:
-            str: O tipo de bloqueio associado à operação:
-                - 'compartilhado' para operações de leitura ('r')
-                - 'exclusivo' para operações de escrita ('w')
-
-        Raises:
-            ValueError: Se a operação fornecida não for 'r' ou 'w'.
-        """
-
-        if operacao == 'r':
-            return 'compartilhado'
-        elif operacao == 'w':
-            return 'exclusivo'  
-        elif operacao == 'compartilhado':
-            return 'r'
-        elif operacao == 'exclusivo':
-            return 'w'          
+        self.schedule_escalonado = []
+    def _type_lock(self, operador):
+         
+        if operador == 'r':
+            return 'leitura'
+        elif operador == 'w':
+            return 'escrita'
+        elif operador == 'c':
+            return 'commit'
         else:
-            raise ValueError(f"Operação inválida.")
-    
-    def _add_to_waits(self, transacao_bloqueada, wait_info):
-        transacao_bloqueante, tipo_operacao, objeto = wait_info
-
-        # Adiciona a aresta temporariamente para verificar ciclos
-        self.graph.add_edge(f'T{transacao_bloqueada}', f'T{transacao_bloqueante}')
-
-        # Verifica se a adição cria um ciclo
-        if self._detect_deadlock():
-            self.graph.remove_edge(f'T{transacao_bloqueada}', f'T{transacao_bloqueante}')
-            return False  # Indica que um deadlock foi detectado
-
-        # Garantir que a chave existe antes de adicionar
-        if transacao_bloqueada not in self.waits.keys():
-            self.waits[transacao_bloqueada] = []
-
-        # Se não há ciclo, adiciona à espera
-        self.waits[transacao_bloqueada].append((transacao_bloqueante, tipo_operacao, objeto))
-        return True
-
-    def _detect_deadlock(self):
-        """Verifica se há ciclos no grafo de espera."""
-        graph = Graph
-        try:
-            nx.find_cycle(self.graph, orientation='original')
-            print("Ciclo encontrado!")
-            fig = graph.draw_graph(self.graph)
-            fig.show()  # Exibe o gráfico quando o deadlock for detectado
-
-            return True
-        except nx.NetworkXNoCycle:
-            return False
-
+            raise ValueError(f'Operação {operador} inválida!')
     def add_locks(self, schedule_parsed: list) -> None:
-        """
-        Adiciona locks às transações com base em um cronograma de operações.
-        """
-        
-        locks = defaultdict(lambda: defaultdict(list))
-        waits = defaultdict(list)
+            """
+            Adiciona locks às transações com base em um cronograma de operações.
+            """
+            
+            locks = defaultdict(lambda: defaultdict(list))
+            waits = defaultdict(list)
 
-        for command in schedule_parsed:
-            if command[1] == 'c':
-                self._process_commit(command)
-            else:
-                transacao = command[0]
-                tipo_operacao = self._type_lock(command[1])
-                objeto = command[2]
+            for operacao in schedule_parsed:
+                transacao = operacao[0]
+                tipo_operacao = self._type_lock(operacao[1])
+                objeto = operacao[2]
 
-                if objeto not in locks.keys():
-                    locks[objeto][tipo_operacao].append(transacao)
-                    self._add_new_schedule(command)  # Adiciona no novo schedule
-
-                elif tipo_operacao == 'compartilhado':
-                    if len(locks[objeto]['exclusivo']) == 0:
+                # Lógica para operação do tipo leitura
+                if tipo_operacao == 'leitura':
+                     
+                    if (objeto not in locks.keys()) or (not locks[objeto]['certify']):
                         locks[objeto][tipo_operacao].append(transacao)
-                        self._add_new_schedule(command)
-                    else:
-                        # Verifica se pode adicionar à fila de espera
-                        transacao_lock = locks[objeto]['exclusivo']
-                        if not self._add_to_waits(transacao, (transacao_lock[0], tipo_operacao, objeto)):
-                            print(f"Deadlock detectado ao tentar adicionar {transacao} à espera.")
+                        self._add_new_schedule(operacao)
 
-                elif (len(locks[objeto]['compartilhado']) == 1) and (transacao in locks[objeto]['compartilhado']):
-                    locks[objeto]['exclusivo'] = locks[objeto]['compartilhado']  # Mover lock para exclusivo
-                    locks[objeto]['compartilhado'] = []  # Limpar compartilhado
-                    self._add_new_schedule(command)
-                else:
-                    transacao_lock = locks[objeto]['exclusivo'] + locks[objeto]['compartilhado']
-                    if transacao_lock:  # Verifica se não está vazio
-                        if not self._add_to_waits(transacao, (transacao_lock[0], tipo_operacao, objeto)):
-                            print(f"Deadlock detectado ao tentar adicionar {transacao} à espera.")
                     else:
-                        # Trate o caso onde não há transação bloqueante
-                        pass
+                        transacao_bloqueio = locks[objeto]['certify'][0]
+                        waits[transacao].append(operacao)
 
+                # Lógica para operação do tipo leitura
+                if tipo_operacao == 'escrita':
+                    pass
             self.locks = {k: dict(v) for k, v in locks.items()}
             self.waits = dict(waits)
-
-
+    
     def _add_new_schedule(self,command: tuple) -> None:
         """
         Adiciona um novo comando ao cronograma reformulado.
@@ -150,103 +74,6 @@ class Locks:
         else:
             refactor_command = f'{tipo_operacao}{transacao}({objeto})'
 
-        self.new_schedule.append(refactor_command)
-    
-    def retorna_new_schedule(self):
-        return ''.join(self.new_schedule)
+        self.schedule_escalonado.append(refactor_command)
 
-    def _process_commit(self, command):
-        """
-        Processa um commit de transação, atualizando o cronograma e liberando locks.
-
-        Esta função é chamada quando uma transação realiza um commit. Ela adiciona o comando 
-        de commit ao cronograma reformulado e remove todos os locks associados à transação, 
-        liberando os objetos que estavam bloqueados.
-
-        Parâmetros:
-        -----------
-        command : tuple
-            Uma tupla representando o comando de commit, que contém:
-            - transação (str): Identificador da transação (ex: 'T1').
-            - operação (str): Tipo de operação, que deve ser 'c' para commit.
-            - objeto (str ou None): O objeto sobre o qual a operação é realizada (não utilizado para commit).
-
-        Retorna:
-        --------
-        None
-        """
-
-        transacao = command[0]
-
-        # Adiciona o commit ao novo schedule
-        self._add_new_schedule(command)
-
-        # Libera todos os locks associados a essa transação
-        for obj, tipos_locks in self.locks.items():
-            # Remove a transação dos locks compartilhados e exclusivos
-            if 'compartilhado' not in tipos_locks:
-                tipos_locks['compartilhado'] = []
-            if 'exclusivo' not in tipos_locks:
-                tipos_locks['exclusivo'] = []
             
-            if transacao in tipos_locks['compartilhado']:
-                tipos_locks['compartilhado'].remove(transacao)
-            if transacao in tipos_locks['exclusivo']:
-                tipos_locks['exclusivo'].remove(transacao)
-
-            self._libera_lock(obj, tipos_locks)
-
-        
-        
-
-
-    def _libera_lock(self, objeto, tipos_locks):
-        """
-        Libera um lock de um objeto e concede locks a transações em espera.
-
-        Esta função é chamada quando um objeto é liberado. Ela verifica se há transações que estão 
-        esperando pelo objeto liberado e tenta conceder os locks apropriados a essas transações, 
-        atualizando o cronograma conforme necessário.
-
-        Parâmetros:
-        -----------
-        objeto : str
-            O objeto cujo lock está sendo liberado.
-
-        tipos_locks : dict
-            Um dicionário contendo os tipos de locks (compartilhado e exclusivo) associados ao 
-            objeto, representando as transações que possuem esses locks.
-
-        Retorna:
-        --------
-        None
-        """
-
-        transacoes_a_remover = []
-
-        # Verifica se há transações esperando por esse objeto
-        for trans_esperando, objeto_esperado in self.waits.items():
-        # Se a transação está esperando pelo objeto que foi liberado, tenta conceder o lock
-            if objeto == objeto_esperado[0][2]:  # Verifica se o objeto esperado é o mesmo que foi liberado
-                        # Verifica se o lock pode ser concedido
-                if len(tipos_locks['exclusivo']) == 0 and (len(tipos_locks['compartilhado']) == 0 or objeto_esperado[0][0] == 'compartilhado'):
-                # Concede o lock à transação esperando
-                    tipo_operacao = objeto_esperado[0][1]
-                    self.locks[objeto][tipo_operacao].append(trans_esperando)
-
-                    # Adiciona à lista de transações que terão o lock concedido
-                    transacoes_a_remover.append(trans_esperando)
-
-                    # Adiciona ao novo schedule
-                    tipo_operacao_espera = self._type_lock(objeto_esperado[0][1])
-                    self._add_new_schedule((trans_esperando, tipo_operacao_espera, objeto))
-                    
-
-        for trans_esperando in transacoes_a_remover:
-            #self.waits.pop(trans_esperando)
-            del self.waits[trans_esperando]
-            
-            
-    
-
-

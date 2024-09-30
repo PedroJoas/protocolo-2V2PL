@@ -3,7 +3,7 @@ Implementação do protocolo de controle de concorrência 2V2PL para disciplina 
 
 # Integrantes
 
-| Nome | Matricula |
+| Nome | Matrícula |
 | - | - |
 | Pedro Joás Freitas Lima | 548292 |
 | José Alberto Rodrigues Neto | 547872 |
