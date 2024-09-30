@@ -36,11 +36,23 @@ class Locks:
 
                     else:
                         transacao_bloqueio = locks[objeto]['certify'][0]
-                        waits[transacao].append(operacao)
+                        waits[transacao_bloqueio].append(operacao)
 
                 # Lógica para operação do tipo leitura
                 if tipo_operacao == 'escrita':
-                    pass
+                    
+                    if (objeto not in locks.keys()) or (not locks[objeto]['certify']) or (not locks[objeto]['escrita']):
+                        locks[objeto][tipo_operacao].append(transacao)
+                        self._add_new_schedule(operacao)
+
+                    else:
+                        if locks[objeto]['certify']:
+                            transacao_bloqueio = locks[objeto]['certify'][0]
+                        else:
+                            transacao_bloqueio = locks[objeto]['escrita'][0]
+                        
+                        waits[transacao_bloqueio].append(operacao)
+
             self.locks = {k: dict(v) for k, v in locks.items()}
             self.waits = dict(waits)
     
